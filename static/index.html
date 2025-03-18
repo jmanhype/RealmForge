@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RealmForge Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #fff;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .sidebar {
+            width: 300px;
+            padding: 20px;
+            background-color: #1e1e1e;
+            overflow-y: auto;
+        }
+        .main {
+            flex: 1;
+            position: relative;
+        }
+        #scene-container {
+            width: 100%;
+            height: 100%;
+        }
+        h1, h2 {
+            color: #bb86fc;
+        }
+        button {
+            background-color: #bb86fc;
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #9c64e8;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 15px 0;
+            border-radius: 4px;
+            border: 1px solid #333;
+            background-color: #333;
+            color: #fff;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            color: #ddd;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        #debug-console {
+            height: 150px;
+            background: #2a2a2a;
+            color: #4caf50;
+            overflow-y: auto;
+            font-family: monospace;
+            padding: 8px;
+            margin-top: 20px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>RealmForge</h1>
+            
+            <h2>Scene Generator</h2>
+            <div class="form-group">
+                <label for="player-id">Player ID:</label>
+                <input type="text" id="player-id" value="player123">
+                
+                <label for="location-id">Location ID:</label>
+                <input type="text" id="location-id" value="forest_1">
+                
+                <label for="quality-level">Quality Level:</label>
+                <select id="quality-level">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                    <option value="ultra">Ultra</option>
+                </select>
+                
+                <button id="generate-scene">Generate Scene</button>
+            </div>
+            
+            <h2>Character Generator</h2>
+            <div class="form-group">
+                <label for="character-id">Character ID:</label>
+                <input type="text" id="character-id" value="npc123">
+                
+                <label for="character-type">Character Type:</label>
+                <select id="character-type">
+                    <option value="npc" selected>NPC</option>
+                    <option value="player">Player</option>
+                    <option value="enemy">Enemy</option>
+                </select>
+                
+                <label for="character-class">Character Class:</label>
+                <select id="character-class">
+                    <option value="merchant" selected>Merchant</option>
+                    <option value="warrior">Warrior</option>
+                    <option value="mage">Mage</option>
+                    <option value="ranger">Ranger</option>
+                </select>
+                
+                <label for="character-description">Description:</label>
+                <input type="text" id="character-description" value="A friendly old merchant with white beard">
+                
+                <button id="generate-character">Generate Character</button>
+            </div>
+            
+            <h2>Template Generator</h2>
+            <div class="form-group">
+                <label for="template-type">Template Type:</label>
+                <select id="template-type">
+                    <option value="forest" selected>Forest</option>
+                    <option value="cave">Cave</option>
+                    <option value="town">Town</option>
+                    <option value="dungeon">Dungeon</option>
+                </select>
+                
+                <label for="template-quality">Quality Level:</label>
+                <select id="template-quality">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                    <option value="ultra">Ultra</option>
+                </select>
+                
+                <button id="generate-template">Generate Template</button>
+            </div>
+            
+            <div id="debug-console"></div>
+        </div>
+        
+        <div class="main">
+            <div id="scene-container"></div>
+        </div>
+    </div>
+
+    <script>
+    // RealmForge Visualizer App - Embedded Version
+
+    // Debug console
+    function log(message) {
+        const console = document.getElementById('debug-console');
+        console.innerHTML += message + '\n';
+        console.scrollTop = console.scrollHeight;
+    }
+
+    // API URLs
+    const API_BASE_URL = 'http://localhost:8001';
+    const SCENE_URL = `${API_BASE_URL}/visualization/scene`;
+    const CHARACTER_URL = `${API_BASE_URL}/visualization/character`;
+    const TEMPLATE_URL = `${API_BASE_URL}/visualization/template`;
+
+    // Three.js globals
+    let scene, camera, renderer, controls;
+    let currentModel = null;
+
+    // Initialize Three.js environment
+    function initThreeJs() {
+        log("Initializing ThreeJS environment");
+        try {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            
+            // Create renderer
+            const container = document.getElementById('scene-container');
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0, 0);
+            controls.update();
+            
+            // Add ambient light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            // Add directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Add grid for reference
+            const gridHelper = new THREE.GridHelper(20, 20);
+            scene.add(gridHelper);
+            
+            // Add a simple cube to confirm the scene is working
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            const cube = new THREE.Mesh(geometry, material);
+            cube.position.y = 0.5;
+            scene.add(cube);
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Start animation loop
+            animate();
+            log("ThreeJS initialization complete");
+        } catch (error) {
+            log("Error initializing ThreeJS: " + error.message);
+            alert("Failed to initialize 3D environment: " + error.message);
+        }
+    }
+
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // Handle window resize
+    function onWindowResize() {
+        try {
+            const container = document.getElementById('scene-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        } catch (error) {
+            log("Error handling window resize: " + error.message);
+        }
+    }
+
+    // Clear scene except for lights and grid
+    function clearScene() {
+        log("Clearing scene");
+        try {
+            while(scene.children.length > 0) { 
+                scene.remove(scene.children[0]); 
+            }
+            
+            // Re-add grid
+            const gridHelper = new THREE.GridHelper(20, 20);
+            scene.add(gridHelper);
+            
+            // Add default lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            log("Scene cleared successfully");
+        } catch (error) {
+            log("Error clearing scene: " + error.message);
+        }
+    }
+
+    // Add forest placeholder content
+    function addForestContent() {
+        log("Adding forest placeholder content");
+        
+        // Create ground
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x447744, 
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Add some trees
+        for (let i = 0; i < 20; i++) {
+            const treeGroup = new THREE.Group();
+            
+            // Tree trunk
+            const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 2, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 1;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+            
+            // Tree foliage
+            const foliageGeometry = new THREE.ConeGeometry(1, 2, 8);
+            const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+            foliage.position.y = 3;
+            foliage.castShadow = true;
+            treeGroup.add(foliage);
+            
+            // Position tree randomly
+            treeGroup.position.x = Math.random() * 40 - 20;
+            treeGroup.position.z = Math.random() * 40 - 20;
+            
+            scene.add(treeGroup);
+        }
+    }
+
+    // Add town placeholder content
+    function addTownContent() {
+        log("Adding town placeholder content");
+        
+        // Create ground
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x777777, 
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Add some buildings
+        for (let i = 0; i < 8; i++) {
+            const building = new THREE.Group();
+            
+            // Building base
+            const width = Math.random() * 3 + 2;
+            const height = Math.random() * 2 + 2;
+            const depth = Math.random() * 3 + 2;
+            
+            const baseGeometry = new THREE.BoxGeometry(width, height, depth);
+            const baseMaterial = new THREE.MeshStandardMaterial({ 
+                color: Math.random() > 0.5 ? 0xd3b17d : 0xe0c9a6
+            });
+            const base = new THREE.Mesh(baseGeometry, baseMaterial);
+            base.position.y = height / 2;
+            base.castShadow = true;
+            base.receiveShadow = true;
+            building.add(base);
+            
+            // Roof
+            const roofGeometry = new THREE.ConeGeometry(width * 0.7, height * 0.7, 4);
+            const roofMaterial = new THREE.MeshStandardMaterial({ color: 0x993333 });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = height + (height * 0.7) / 2;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            building.add(roof);
+            
+            // Position building
+            building.position.x = (i % 3) * 8 - 8;
+            building.position.z = Math.floor(i / 3) * 8 - 8;
+            
+            scene.add(building);
+        }
+    }
+
+    // Add generic placeholder content
+    function addGenericContent() {
+        log("Adding generic placeholder content");
+        
+        // Create ground
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x777777, 
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Add a simple landmark in the center
+        const landmarkGroup = new THREE.Group();
+        
+        // Base
+        const baseGeometry = new THREE.CylinderGeometry(2, 2, 0.5, 16);
+        const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.y = 0.25;
+        landmarkGroup.add(base);
+        
+        // Column
+        const columnGeometry = new THREE.CylinderGeometry(0.75, 0.75, 4, 16);
+        const columnMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+        const column = new THREE.Mesh(columnGeometry, columnMaterial);
+        column.position.y = 2.5;
+        landmarkGroup.add(column);
+        
+        // Top
+        const topGeometry = new THREE.CylinderGeometry(1.5, 1.5, 0.5, 16);
+        const topMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const top = new THREE.Mesh(topGeometry, topMaterial);
+        top.position.y = 5;
+        landmarkGroup.add(top);
+        
+        // Add some decoration
+        const sphereGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+        const sphereMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x4444ff,
+            metalness: 0.5,
+            roughness: 0.2
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.y = 6;
+        landmarkGroup.add(sphere);
+        
+        scene.add(landmarkGroup);
+    }
+
+    // Generate scene API call
+    async function generateScene() {
+        log("Generate Scene button clicked!");
+        
+        // Add loading indicator
+        document.getElementById('generate-scene').disabled = true;
+        document.getElementById('generate-scene').textContent = 'Generating...';
+        
+        const playerID = document.getElementById('player-id').value;
+        const locationID = document.getElementById('location-id').value;
+        const qualityLevel = document.getElementById('quality-level').value;
+        
+        log(`Generating scene with: player=${playerID}, location=${locationID}, quality=${qualityLevel}`);
+        
+        const requestData = {
+            player_id: playerID,
+            location_id: locationID,
+            quality_level: qualityLevel,
+            include_assets: true,
+            renderer_settings: {}
+        };
+        
+        try {
+            log("Sending request to: " + SCENE_URL);
+            
+            try {
+                const response = await fetch(SCENE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                log("Response status: " + response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                log("Received API response");
+                
+                // Clear and set up new scene
+                clearScene();
+                
+                // For now just add placeholder content based on location
+                if (locationID.includes('forest')) {
+                    addForestContent();
+                } else if (locationID.includes('town')) {
+                    addTownContent();
+                } else {
+                    addGenericContent();
+                }
+                
+            } catch (apiError) {
+                log("API call failed: " + apiError.message);
+                
+                // Create mock data for testing
+                log("Using fallback mock data for testing");
+                
+                // Clear scene first
+                clearScene();
+                
+                // Add content based on location type
+                if (locationID.includes("forest")) {
+                    addForestContent();
+                    alert("Using mock forest data (API error: " + apiError.message + ")");
+                } else if (locationID.includes("town")) {
+                    addTownContent();
+                    alert("Using mock town data (API error: " + apiError.message + ")");
+                } else {
+                    addGenericContent();
+                    alert("Using mock generic data (API error: " + apiError.message + ")");
+                }
+            }
+            
+        } catch (error) {
+            log("Error generating scene: " + error.message);
+            alert(`Failed to generate scene: ${error.message}`);
+            clearScene();
+            addGenericContent();
+        } finally {
+            // Reset button
+            document.getElementById('generate-scene').disabled = false;
+            document.getElementById('generate-scene').textContent = 'Generate Scene';
+        }
+    }
+
+    // Generate character API call
+    async function generateCharacter() {
+        log("Generate Character button clicked!");
+        
+        // Add loading indicator
+        document.getElementById('generate-character').disabled = true;
+        document.getElementById('generate-character').textContent = 'Generating...';
+        
+        const characterID = document.getElementById('character-id').value;
+        const characterType = document.getElementById('character-type').value;
+        const characterClass = document.getElementById('character-class').value;
+        const description = document.getElementById('character-description').value;
+        
+        log(`Generating character: ${characterType} ${characterClass}`);
+        
+        try {
+            // Create a simple placeholder character
+            // Create a group for the character
+            if (currentModel) {
+                scene.remove(currentModel);
+            }
+            
+            currentModel = new THREE.Group();
+            
+            // Create a simple humanoid figure
+            const bodyGroup = new THREE.Group();
+            
+            // Head
+            const headGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffcc99 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.5;
+            bodyGroup.add(head);
+            
+            // Torso
+            const torsoGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1, 8);
+            const torsoMaterial = new THREE.MeshStandardMaterial({ color: 0x3333aa });
+            const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
+            torso.position.y = 0.5;
+            bodyGroup.add(torso);
+            
+            // Legs
+            const legGeometry = new THREE.CylinderGeometry(0.15, 0.1, 1, 8);
+            const legMaterial = new THREE.MeshStandardMaterial({ color: 0x3333aa });
+            
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(0.2, -0.5, 0);
+            bodyGroup.add(leftLeg);
+            
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(-0.2, -0.5, 0);
+            bodyGroup.add(rightLeg);
+            
+            currentModel.add(bodyGroup);
+            scene.add(currentModel);
+            
+            log("Added character to scene");
+        } catch (error) {
+            log("Error generating character: " + error.message);
+            alert(`Failed to generate character: ${error.message}`);
+        } finally {
+            // Reset button
+            document.getElementById('generate-character').disabled = false;
+            document.getElementById('generate-character').textContent = 'Generate Character';
+        }
+    }
+
+    // Generate template API call
+    async function generateTemplate() {
+        log("Generate Template button clicked!");
+        
+        // Same logic as generateScene for now
+        const templateType = document.getElementById('template-type').value;
+        
+        try {
+            clearScene();
+            
+            if (templateType === "forest") {
+                addForestContent();
+            } else if (templateType === "town") {
+                addTownContent();
+            } else {
+                addGenericContent();
+            }
+            
+            log(`Generated ${templateType} template`);
+        } catch (error) {
+            log("Error generating template: " + error.message);
+            alert(`Failed to generate template: ${error.message}`);
+        }
+    }
+
+    // Initialize app
+    window.addEventListener('DOMContentLoaded', () => {
+        log("DOM fully loaded - initializing app");
+        try {
+            initThreeJs();
+            
+            // Add event listeners for buttons
+            log("Setting up button event listeners");
+            document.getElementById('generate-scene').addEventListener('click', generateScene);
+            document.getElementById('generate-character').addEventListener('click', generateCharacter);
+            document.getElementById('generate-template').addEventListener('click', generateTemplate);
+            log("Button event listeners set up successfully");
+        } catch (error) {
+            log("Error in app initialization: " + error.message);
+            alert("Error initializing app: " + error.message);
+        }
+    });
+    </script>
+</body>
+</html> 

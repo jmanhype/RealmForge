@@ -1,0 +1,88 @@
+Metadata-Version: 2.2
+Name: realmforge
+Version: 0.1.0
+Summary: A procedurally generated RPG with AI-powered narrative, world building, and NPCs
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.100.0
+Requires-Dist: uvicorn>=0.22.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: openai>=1.0.0
+Requires-Dist: aiohttp>=3.8.0
+Requires-Dist: python-multipart>=0.0.6
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: pre-commit>=3.3.0; extra == "dev"
+
+# Realm Forge
+
+A procedurally generated RPG with AI-powered narrative, world building, and NPCs using AFLOW and Three.js.
+
+## Overview
+
+Realm Forge uses advanced AI workflows to create dynamic game experiences:
+
+- **Evolving Narrative**: Stories that adapt based on player choices and history
+- **Dynamic World Generation**: Procedurally created landscapes, dungeons, towns, and quests
+- **Intelligent NPCs**: Characters with personality, memory, and evolving relationships
+- **Adaptive Difficulty**: Game challenges that adjust to player skill level
+- **Engagement Optimization**: AI systems that learn from player engagement metrics
+
+## Architecture
+
+The system integrates AFLOW (Automated Flow) with Three.js through a RESTful API:
+
+- **AFLOW Workflows**: Specialized AI workflows for narrative, world content, NPCs, and difficulty
+- **REST API**: FastAPI-based endpoints for Three.js integration
+- **Optimization Pipeline**: Automatic workflow improvements based on player metrics
+- **Asynchronous Generation**: Non-blocking content creation to maintain performance
+
+## Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   pip install -e .
+   ```
+3. Copy `.env.example` to `.env` and configure:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys
+   ```
+4. Run the API server:
+   ```bash
+   python src/api/main.py
+   ```
+
+## API Documentation
+
+API documentation is available at `/docs` when the server is running.
+
+## Development
+
+For development setup:
+```bash
+pip install -e ".[dev]"
+pre-commit install
+```
+
+Run tests:
+```bash
+pytest
+```
+
+## License
+
+MIT License
