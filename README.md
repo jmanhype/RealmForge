@@ -75,6 +75,9 @@ The 3D visualization frontend is available at:
 http://localhost:8001/visualizer
 ```
 
+![RealmForge Visualizer Preview](static/images/visualizer_preview.png)
+*Preview of the RealmForge 3D visualization interface with procedurally generated forest scene and character.*
+
 ## 🧪 Testing
 
 To run the test suite:
@@ -175,3 +178,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <div align="center">
   <p>Made with 💻 and ❤️ by the RealmForge Team</p>
 </div>
+
+![RealmForge Visualizer Preview](static/images/visualizer_preview.png)
+*Preview of the RealmForge 3D visualization interface with procedurally generated forest scene and character.*
+
